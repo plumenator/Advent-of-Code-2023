@@ -41,15 +41,20 @@ zoneight234
 In this example, the calibration values are 29, 83, 13, 24, 42, 14, and 76. Adding these together produces 281.
 
 What is the sum of all of the calibration values?
+
+Your puzzle answer was 55701.
+
+
 */
 
 use std::fs::read_to_string;
 
 use nom::branch::alt;
 use nom::bytes::complete::tag;
-use nom::character::complete::anychar;
-use nom::combinator::map;
+use nom::character::complete::{anychar, char};
+use nom::combinator::{map, peek};
 use nom::multi::many1;
+use nom::sequence::terminated;
 use nom::IResult;
 
 pub fn part1(file_name: &str) -> u32 {
@@ -80,15 +85,15 @@ pub fn part2(file_name: &str) -> u32 {
 
 fn parse_word(input: &str) -> Option<u32> {
     match input {
-        "onne" => Some(1),
-        "two" => Some(2),
-        "three" => Some(3),
-        "foour" => Some(4),
-        "five" => Some(5),
+        "on" => Some(1),
+        "tw" => Some(2),
+        "thre" => Some(3),
+        "four" => Some(4),
+        "fiv" => Some(5),
         "six" => Some(6),
-        "seeveen" => Some(7),
-        "eight" => Some(8),
-        "ninne" => Some(9),
+        "seve" => Some(7),
+        "eigh" => Some(8),
+        "nin" => Some(9),
         _ => None,
     }
 }
@@ -97,15 +102,15 @@ fn parse_word_digits(input: &str) -> IResult<&str, Vec<Option<u32>>> {
     many1(alt((
         map(
             alt((
-                tag("onne"),
-                tag("two"),
-                tag("three"),
-                tag("foour"),
-                tag("five"),
+                terminated(tag("on"), peek(char('e'))),
+                terminated(tag("tw"), peek(char('o'))),
+                terminated(tag("thre"), peek(char('e'))),
+                tag("four"),
+                terminated(tag("fiv"), peek(char('e'))),
                 tag("six"),
-                tag("seeveen"),
-                tag("eight"),
-                tag("ninne"),
+                terminated(tag("seve"), peek(char('n'))),
+                terminated(tag("eigh"), peek(char('t'))),
+                terminated(tag("nin"), peek(char('e'))),
             )),
             parse_word,
         ),
@@ -114,14 +119,7 @@ fn parse_word_digits(input: &str) -> IResult<&str, Vec<Option<u32>>> {
 }
 
 fn parse_word_line(line: &str) -> u32 {
-    let mut normalized = String::new();
-    for c in line.chars() {
-        normalized.push(c);
-        if c == 'o' || c == 'e' || c == 't' || c == 'n' {
-            normalized.push(c);
-        }
-    }
-    let digits: Vec<_> = parse_word_digits(&normalized)
+    let digits: Vec<_> = parse_word_digits(line)
         .unwrap()
         .1
         .into_iter()
@@ -138,17 +136,19 @@ fn parse_word_line(line: &str) -> u32 {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     #[test]
-    fn test_part1() {
-        assert_eq!(part1("src/day1_test_input.txt"), 142);
-        assert_eq!(part1("src/day1_input.txt"), 56397)
+    fn part1() {
+        assert_eq!(super::part1("src/day1_test_input.txt"), 142);
+        assert_eq!(super::part1("src/day1_input.txt"), 56397)
     }
 
     #[test]
-    fn test_part2() {
-        assert_eq!(part2("src/day1_2_test_input.txt"), 281, "Test input failed");
-        assert_eq!(part2("src/day1_input.txt"), 55701)
+    fn part2() {
+        assert_eq!(
+            super::part2("src/day1_2_test_input.txt"),
+            281,
+            "Test input failed"
+        );
+        assert_eq!(super::part2("src/day1_input.txt"), 55701)
     }
 }

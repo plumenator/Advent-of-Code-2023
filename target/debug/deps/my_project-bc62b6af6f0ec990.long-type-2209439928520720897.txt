@@ -1,1 +1,0 @@
-(impl FnMut(Option<u32>) -> Result<(Option<u32>, Option<u32>), nom::Err<nom::error::Error<&str>>>, impl FnMut(Option<u32>) -> Result<(Option<u32>, Option<u32>), nom::Err<nom::error::Error<&str>>>)
