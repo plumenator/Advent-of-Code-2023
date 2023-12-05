@@ -64,6 +64,8 @@ Your one instance of card 6 (one original) has no matching numbers and wins no m
 Once all of the originals and copies have been processed, you end up with 1 instance of card 1, 2 instances of card 2, 4 instances of card 3, 8 instances of card 4, 14 instances of card 5, and 1 instance of card 6. In total, this example pile of scratchcards causes you to ultimately have 30 scratchcards!
 
 Process all of the original and copied scratchcards until no more scratchcards are won. Including the original set of scratchcards, how many total scratchcards do you end up with?
+
+Your puzzle answer was 6050769.
 */
 
 use std::fs::read_to_string;
@@ -82,12 +84,13 @@ struct Card {
 
 impl Card {
     fn score(&self) -> u64 {
-        2u64.pow(
-            self.have
-                .iter()
-                .filter(|s| self.winning.contains(s))
-                .count() as u32,
-        ) / 2
+        2u64.pow(self.matches() as u32) / 2
+    }
+    fn matches(&self) -> usize {
+        self.have
+            .iter()
+            .filter(|s| self.winning.contains(s))
+            .count()
     }
 }
 
@@ -97,6 +100,22 @@ pub fn part1(file_name: &str) -> u64 {
         .lines()
         .map(|c| parse_card_line(c).score())
         .sum()
+}
+
+pub fn part2(file_name: &str) -> u64 {
+    let matcheses: Vec<_> = read_to_string(file_name)
+        .unwrap()
+        .lines()
+        .map(|c| parse_card_line(c).matches())
+        .collect();
+    let mut counts = vec![1; matcheses.len()];
+    for (index, matches) in matcheses.iter().enumerate() {
+        eprintln!("{} {}", index, matches);
+        for offset in 1..=*matches {
+            counts[index + offset] += counts[index];
+        }
+    }
+    counts.iter().sum()
 }
 
 fn parse_card_line(input: &str) -> Card {
@@ -122,5 +141,13 @@ mod test {
     #[test]
     fn part1_actual() {
         assert_eq!(super::part1("src/day4_input.txt"), 21158)
+    }
+    #[test]
+    fn part2_example() {
+        assert_eq!(super::part2("src/day4_test_input.txt"), 30)
+    }
+    #[test]
+    fn part2_actual() {
+        assert_eq!(super::part2("src/day4_input.txt"), 6050769)
     }
 }
