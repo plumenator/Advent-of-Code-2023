@@ -111,6 +111,8 @@ Now, rather than considering four seed numbers, you need to consider a total of 
 In the above example, the lowest location number can be obtained from seed number 82, which corresponds to soil 84, fertilizer 84, water 84, light 77, temperature 45, humidity 46, and location 46. So, the lowest location number is 46.
 
 Consider all of the initial seed numbers listed in the ranges on the first line of the almanac. What is the lowest location number that corresponds to any of the initial seed numbers?
+
+Your puzzle answer was 15290096.
 */
 
 use std::fs::read_to_string;
@@ -149,6 +151,26 @@ impl Almanac {
         self.seeds.iter().map(|seed| self.location(*seed)).collect()
     }
 
+    fn location_ranges(&self) -> Vec<(u64, u64)> {
+        let seed: Vec<_> = self
+            .seeds
+            .chunks_exact(2)
+            .map(|chunk| (chunk[0], chunk[1]))
+            .collect();
+        let soil = find_ranges_in_ranges(&seed, &self.seed_to_soil);
+        let fertilizer = find_ranges_in_ranges(&soil, &self.soil_to_fertilizer);
+        let water = find_ranges_in_ranges(&fertilizer, &self.fertilizer_to_water);
+        let light = find_ranges_in_ranges(&water, &self.water_to_light);
+        let temperature = find_ranges_in_ranges(&light, &self.light_to_temperature);
+        let humidity = find_ranges_in_ranges(&temperature, &self.temperature_to_humidity);
+        let location = find_ranges_in_ranges(&humidity, &self.humidity_to_location);
+        eprintln!(
+          "seed:{:?}, soil:{:?}, fertilizer:{:?}, water:{:?}, light:{:?}, temperature:{:?}, humidity:{:?}, location:{:?}",
+          seed, soil, fertilizer, water, light, temperature, humidity, location
+        );
+        location
+    }
+
     fn location(&self, seed: u64) -> u64 {
         let soil = find_in_ranges(seed, &self.seed_to_soil);
         let fertilizer = find_in_ranges(soil, &self.soil_to_fertilizer);
@@ -156,7 +178,12 @@ impl Almanac {
         let light = find_in_ranges(water, &self.water_to_light);
         let temperature = find_in_ranges(light, &self.light_to_temperature);
         let humidity = find_in_ranges(temperature, &self.temperature_to_humidity);
-        find_in_ranges(humidity, &self.humidity_to_location)
+        let location = find_in_ranges(humidity, &self.humidity_to_location);
+        eprintln!(
+          "seed:{}, soil:{}, fertilizer:{}, water:{}, light:{}, temperature:{}, humidity:{}, location:{}",
+          seed, soil, fertilizer, water, light, temperature, humidity, location
+        );
+        location
     }
 }
 
@@ -169,12 +196,94 @@ fn find_in_ranges(value: u64, ranges: &[Range]) -> u64 {
     value
 }
 
+fn find_ranges_in_ranges(needles: &[(u64, u64)], ranges: &[Range]) -> Vec<(u64, u64)> {
+    eprintln!("needles:{:?}, ranges:{:?}", needles, ranges);
+    let mut out = vec![];
+    for &needle in needles {
+        let mut curr_needles = vec![needle];
+        for range in ranges {
+            let mut next_needles = Vec::new();
+            for curr_needle in curr_needles {
+                let (prec, overlap, succ) = find_overlaps(curr_needle, range);
+                eprintln!(
+                    "curr:{:?} prec:{:?} overlap:{:?} succ:{:?}",
+                    curr_needle, prec, overlap, succ
+                );
+                if let Some(overlap) = overlap {
+                    out.push(overlap);
+                }
+                if let Some(prec) = prec {
+                    next_needles.push(prec);
+                }
+                if let Some(succ) = succ {
+                    next_needles.push(succ);
+                }
+            }
+            curr_needles = next_needles;
+        }
+        out.extend_from_slice(&curr_needles);
+    }
+    out
+}
+
+fn find_overlaps(
+    (ns, nw): (u64, u64),
+    &Range {
+        destination_start,
+        source_start,
+        width,
+    }: &Range,
+) -> (Option<(u64, u64)>, Option<(u64, u64)>, Option<(u64, u64)>) {
+    if ns + nw - 1 < source_start {
+        // left
+        (Some((ns, nw)), None, None)
+    } else if ns > source_start + width - 1 {
+        // right
+        (None, None, Some((ns, nw)))
+    } else if ns >= source_start && ns + nw <= source_start + width {
+        // inside
+        (
+            None,
+            Some((destination_start + (ns - source_start), nw)),
+            None,
+        )
+    } else if ns >= source_start {
+        // left overlap
+        (
+            None,
+            Some((
+                destination_start + (ns - source_start),
+                width - (ns - source_start),
+            )),
+            Some((source_start + width, nw - (width - (ns - source_start)))),
+        )
+    } else {
+        // right overlap
+        (
+            Some((ns, source_start - ns)),
+            Some((destination_start, nw - (source_start - ns))),
+            None,
+        )
+    }
+}
+
 pub fn part1(file_name: &str) -> u64 {
     *parse_almanac(read_to_string(file_name).unwrap().as_str())
         .unwrap()
         .1
         .locations()
         .iter()
+        .min()
+        .unwrap()
+}
+
+pub fn part2(file_name: &str) -> u64 {
+    parse_almanac(read_to_string(file_name).unwrap().as_str())
+        .unwrap()
+        .1
+        .location_ranges()
+        .iter()
+        .map(|t| t.0)
         .min()
         .unwrap()
 }
@@ -218,5 +327,13 @@ mod test {
     #[test]
     fn part1_actual() {
         assert_eq!(super::part1("src/day5_input.txt"), 424490994)
+    }
+    #[test]
+    fn part2_example() {
+        assert_eq!(super::part2("src/day5_test_input.txt"), 46)
+    }
+    #[test]
+    fn part2_actual() {
+        assert_eq!(super::part2("src/day5_input.txt"), 15290096)
     }
 }
