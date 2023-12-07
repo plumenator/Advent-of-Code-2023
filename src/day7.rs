@@ -53,8 +53,6 @@ Find the rank of every hand in your set. What are the total winnings?
 
 Your puzzle answer was 250602641.
 
-The first half of this puzzle is complete! It provides one gold star: *
-
 --- Part Two ---
 To make things a little more interesting, the Elf introduces one additional rule. Now, J cards are jokers - wildcards that can act like whatever card would make the hand the strongest type possible.
 
@@ -75,6 +73,8 @@ T55J5, KTJJT, and QQQJA are now all four of a kind! T55J5 gets rank 3, QQQJA get
 With the new joker rule, the total winnings in this example are 5905.
 
 Using the new joker rule, find the rank of every hand in your set. What are the new total winnings?
+
+Your puzzle answer was 251037509.
 */
 
 use std::cmp::Ordering;
@@ -105,6 +105,29 @@ pub fn part1(file_name: &str) -> usize {
         .sum()
 }
 
+pub fn part2(file_name: &str) -> usize {
+    let mut hands_and_bids: Vec<(String, usize)> = read_to_string(file_name)
+        .unwrap()
+        .lines()
+        .map(|line| {
+            let mut parts = line.split_ascii_whitespace();
+            (
+                parts.next().unwrap().to_string(),
+                parts.next().unwrap().parse().unwrap(),
+            )
+        })
+        .collect();
+    hands_and_bids.sort_by(|(a, _), (b, _)| cmp_hands_joker(a, b));
+    hands_and_bids
+        .iter()
+        .enumerate()
+        .map(|(i, (_, bid))| (i + 1) * bid)
+        .map(|w| {
+            eprintln!("{:?}", w);
+            w
+        })
+        .sum()
+}
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum Type {
     High,
@@ -157,32 +180,99 @@ fn cmp_hands(a: &str, b: &str) -> Ordering {
     }
 }
 
+fn cmp_hands_joker(a: &str, b: &str) -> Ordering {
+    let a_type = hand_type_joker(a);
+    let b_type = hand_type_joker(b);
+    eprintln!("{} {:?} {} {:?}", a, a_type, b, b_type);
+    if a_type == b_type {
+        map_face_joker(b).as_str().cmp(&map_face_joker(a))
+    } else {
+        a_type.cmp(&b_type)
+    }
+}
+
 fn map_face(hand: &str) -> String {
-  hand.chars().map(|c| match c {
-    'A' => 'a',
-    'K' => 'b', 
-    'Q' => 'c', 
-    'J' =>'d',
-    'T' => 'e',
-    '9' => 'f', 
-    '8' => 'g', 
-    '7' => 'h',
-    '6' => 'i',
-    '5' => 'j', 
-    '4' => 'k', 
-    '3' => 'l',
-      _ => 'm'
-  }).collect()
+    hand.chars()
+        .map(|c| match c {
+            'A' => 'a',
+            'K' => 'b',
+            'Q' => 'c',
+            'J' => 'd',
+            'T' => 'e',
+            '9' => 'f',
+            '8' => 'g',
+            '7' => 'h',
+            '6' => 'i',
+            '5' => 'j',
+            '4' => 'k',
+            '3' => 'l',
+            _ => 'm',
+        })
+        .collect()
+}
+
+fn hand_type_joker(hand: &str) -> Type {
+    let mut set: HashSet<char> = HashSet::from_iter(hand.chars());
+    use Type::*;
+    let j_count = hand.chars().filter(|&c| c == 'J').count();
+    let curr_type = hand_type(hand);
+    if !set.remove(&'J') {
+        return curr_type;
+    }
+
+    match curr_type {
+        Five => Five,
+        Four => Five,
+        Full => Five,
+        Three => Four,
+        Two => {
+            if j_count == 2 {
+                Four
+            } else {
+                Full
+            }
+        }
+        One => Three,
+        High => One,
+    }
+}
+
+fn map_face_joker(hand: &str) -> String {
+    hand.chars()
+        .map(|c| match c {
+            'A' => 'a',
+            'K' => 'b',
+            'Q' => 'c',
+            'J' => 'n',
+            'T' => 'e',
+            '9' => 'f',
+            '8' => 'g',
+            '7' => 'h',
+            '6' => 'i',
+            '5' => 'j',
+            '4' => 'k',
+            '3' => 'l',
+            _ => 'm',
+        })
+        .collect()
 }
 
 #[cfg(test)]
 mod test {
-#[test]
-fn part1_example() {
-    assert_eq!(super::part1("src/day7_test_input.txt"), 6440)
-}
-#[test]
-fn part1_actual() {
-    assert_eq!(super::part1("src/day7_input.txt"), 250602641)
-}
+    #[test]
+    fn part1_example() {
+        assert_eq!(super::part1("src/day7_test_input.txt"), 6440)
+    }
+    #[test]
+    fn part1_actual() {
+        assert_eq!(super::part1("src/day7_input.txt"), 250602641)
+    }
+    #[test]
+    fn part2_example() {
+        assert_eq!(super::part2("src/day7_test_input.txt"), 5905)
+    }
+    #[test]
+    fn part2_actual() {
+        assert_eq!(super::part2("src/day7_input.txt"), 251037509)
+    }
 }
