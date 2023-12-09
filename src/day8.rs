@@ -28,12 +28,9 @@ LLR
 AAA = (BBB, BBB)
 BBB = (AAA, ZZZ)
 ZZZ = (ZZZ, ZZZ)
-
 Starting at AAA, follow the left/right instructions. How many steps are required to reach ZZZ?
 
 Your puzzle answer was 13301.
-
-The first half of this puzzle is complete! It provides one gold star: *
 
 --- Part Two ---
 The sandstorm is upon you and you aren't any closer to escaping the wasteland. You had the camel follow the instructions, but you've barely left your starting position. It's going to take significantly more steps to escape!
@@ -67,7 +64,7 @@ So, in this example, you end up entirely on nodes that end in Z after 6 steps.
 
 Simultaneously start on every node that ends with A. How many steps does it take before you're only on nodes that end with Z?
 
-
+Your puzzle answer was 7309459565207.
 */
 
 use std::collections::HashMap;
@@ -90,6 +87,52 @@ pub fn part1(file_name: &str) -> usize {
         count += 1;
     }
     count
+}
+
+pub fn part2(file_name: &str) -> usize {
+    let (instructions, graph) = parse_graph(read_to_string(file_name).unwrap().as_str());
+    let starts: Vec<_> = graph
+        .keys()
+        .filter(|s| s.chars().last().unwrap() == 'A')
+        .cloned()
+        .collect();
+    let mut counts = vec![0; starts.len()];
+    let mut current;
+    for (index, start) in starts.iter().enumerate() {
+        current = start;
+        for i in instructions.chars().cycle() {
+            if current.chars().last().unwrap() == 'Z' {
+                break;
+            }
+            let (left, right) = &graph[current];
+            if i == 'L' {
+                current = left;
+            } else {
+                current = right;
+            }
+            counts[index] += 1;
+        }
+    }
+    eprintln!("{counts:?}");
+    lcm(&counts)
+}
+
+fn lcm(nums: &[usize]) -> usize {
+  nums.iter().fold(1, |acc, &a| acc * a / gcd(a, acc))
+}
+
+fn gcd(a: usize, b: usize) -> usize {
+  use std::ops::Rem;
+  let  (mut g, mut l) = if a > b { (b, a) } else { (a, b) };
+  let mut prev = l;
+  let mut curr = g;
+  while curr != 0 {
+    prev = curr;
+    curr = g.rem(l);
+    g = l;
+    l = curr;
+  }
+  return prev
 }
 
 fn parse_graph(input: &str) -> (String, HashMap<String, (String, String)>) {
@@ -121,5 +164,13 @@ mod test {
     #[test]
     fn part1_actual() {
         assert_eq!(super::part1("src/day8_input.txt"), 13301)
+    }
+    #[test]
+    fn part2_example() {
+        assert_eq!(super::part2("src/day8_test_input3.txt"), 6)
+    }
+    #[test]
+    fn part2_actual() {
+        assert_eq!(super::part2("src/day8_input.txt"), 7309459565207)
     }
 }
