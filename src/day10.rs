@@ -169,11 +169,13 @@ fn walk(
     visited: &mut HashSet<(isize, isize)>,
 ) -> Option<u64> {
     if visited.contains(&(x, y)) {
+      println!("{x}, {y} visited");
         return None;
     }
     visited.insert((x, y));
     if x < 0 || x >= grid[0].len() as isize || y < 0 || y >= grid.len() as isize {
         visited.remove(&(x, y));
+      println!("{x}, {y} oob");
         return None;
     }
     println!("{x}, {y}, {:?}", grid[y as usize][x as usize]);
