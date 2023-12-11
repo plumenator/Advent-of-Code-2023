@@ -93,6 +93,102 @@ Here are the distances for each tile on that loop:
 23...
 Find the single giant loop starting at S. How many steps along the loop does it take to get from the starting position to the point farthest from the starting position?
 
+Your puzzle answer was 6754.
+
+The first half of this puzzle is complete! It provides one gold star: *
+
+--- Part Two ---
+You quickly reach the farthest point of the loop, but the animal never emerges. Maybe its nest is within the area enclosed by the loop?
+
+To determine whether it's even worth taking the time to search for such a nest, you should calculate how many tiles are contained within the loop. For example:
+
+...........
+.S-------7.
+.|F-----7|.
+.||.....||.
+.||.....||.
+.|L-7.F-J|.
+.|..|.|..|.
+.L--J.L--J.
+...........
+The above loop encloses merely four tiles - the two pairs of . in the southwest and southeast (marked I below). The middle . tiles (marked O below) are not in the loop. Here is the same loop again with those regions marked:
+
+...........
+.S-------7.
+.|F-----7|.
+.||OOOOO||.
+.||OOOOO||.
+.|L-7OF-J|.
+.|II|O|II|.
+.L--JOL--J.
+.....O.....
+In fact, there doesn't even need to be a full tile path to the outside for tiles to count as outside the loop - squeezing between pipes is also allowed! Here, I is still within the loop and O is still outside the loop:
+
+..........
+.S------7.
+.|F----7|.
+.||OOOO||.
+.||OOOO||.
+.|L-7F-J|.
+.|II||II|.
+.L--JL--J.
+..........
+In both of the above examples, 4 tiles are enclosed by the loop.
+
+Here's a larger example:
+
+.F----7F7F7F7F-7....
+.|F--7||||||||FJ....
+.||.FJ||||||||L7....
+FJL7L7LJLJ||LJ.L-7..
+L--J.L7...LJS7F-7L7.
+....F-J..F7FJ|L7L7L7
+....L7.F7||L7|.L7L7|
+.....|FJLJ|FJ|F7|.LJ
+....FJL-7.||.||||...
+....L---J.LJ.LJLJ...
+The above sketch has many random bits of ground, some of which are in the loop (I) and some of which are outside it (O):
+
+OF----7F7F7F7F-7OOOO
+O|F--7||||||||FJOOOO
+O||OFJ||||||||L7OOOO
+FJL7L7LJLJ||LJIL-7OO
+L--JOL7IIILJS7F-7L7O
+OOOOF-JIIF7FJ|L7L7L7
+OOOOL7IF7||L7|IL7L7|
+OOOOO|FJLJ|FJ|F7|OLJ
+OOOOFJL-7O||O||||OOO
+OOOOL---JOLJOLJLJOOO
+In this larger example, 8 tiles are enclosed by the loop.
+
+Any tile that isn't part of the main loop can count as being enclosed by the loop. Here's another example with many bits of junk pipe lying around that aren't connected to the main loop at all:
+
+FF7FSF7F7F7F7F7F---7
+L|LJ||||||||||||F--J
+FL-7LJLJ||||||LJL-77
+F--JF--7||LJLJ7F7FJ-
+L---JF-JLJ.||-FJLJJ7
+|F|F-JF---7F7-L7L|7|
+|FFJF7L7F-JF7|JL---7
+7-L-JL7||F7|L7F-7F7|
+L.L7LFJ|||||FJL7||LJ
+L7JLJL-JLJLJL--JLJ.L
+Here are just the tiles that are enclosed by the loop marked with I:
+
+FF7FSF7F7F7F7F7F---7
+L|LJ||||||||||||F--J
+FL-7LJLJ||||||LJL-77
+F--JF--7||LJLJIF7FJ-
+L---JF-JLJIIIIFJLJJ7
+|F|F-JF---7IIIL7L|7|
+|FFJF7L7F-JF7IIL---7
+7-L-JL7||F7|L7F-7F7|
+L.L7LFJ|||||FJL7||LJ
+L7JLJL-JLJLJL--JLJ.L
+In this last example, 10 tiles are enclosed by the loop.
+
+Figure out whether you have time to search for the nest by calculating the area within the loop. How many tiles are enclosed by the loop?
+
 */
 
 use std::collections::HashSet;
@@ -143,9 +239,73 @@ pub fn part1(file_name: &str) -> u64 {
                 walk(x, y, &grid, &mut HashSet::new())
             }
         })
-        .max()
+        .max_by_key(|(_, s)| *s)
         .unwrap()
+        .1
         / 2
+}
+
+pub fn part2(file_name: &str) -> usize {
+    let grid = parse_grid(file_name);
+    let (sx, sy) = find_start(&grid);
+    let sx = sx as isize;
+    let sy = sy as isize;
+    let the_loop = [(sx + 1, sy), (sx, sy + 1), (sx - 1, sy), (sx, sy - 1)]
+        .iter()
+        .filter_map(|&(x, y)| {
+            if x < 0
+                || y < 0
+                || x >= grid[0].len() as isize
+                || y >= grid.len() as isize
+                || !connect(
+                    &Cell {
+                        x,
+                        y,
+                        pipe: grid[y as usize][x as usize],
+                    },
+                    sx,
+                    sy,
+                )
+            {
+                None
+            } else {
+                walk(x, y, &grid, &mut HashSet::new())
+            }
+        })
+        .max_by_key(|(_, s)| *s)
+        .unwrap()
+        .0;
+    let surrounding = HashSet::<(isize, isize)>::from_iter(the_loop.iter().cloned());
+    let mut enclosed = HashSet::new();
+    for x in 0..grid[0].len() {
+        for y in 0..grid.len() {
+            if surrounding.contains(&(x as isize, y as isize)) {
+                continue;
+            }
+            let mut curr_x = x as isize;
+            let mut intersections = Vec::new();
+            use Pipe::*;
+            loop {
+                if curr_x < 0 || curr_x >= grid[0].len() as isize {
+                    break;
+                } else if surrounding.contains(&(curr_x, y as isize))
+                    && ![NorthWest, NorthEast, Horizontal].contains(&grid[y][curr_x as usize])
+                {
+                    intersections.push(curr_x);
+                    curr_x += 1;
+                    continue;
+                } else {
+                    curr_x += 1;
+                    continue;
+                }
+            }
+            if intersections.len() % 2 == 1 {
+                enclosed.insert((x, y, intersections));
+            }
+        }
+    }
+
+    enclosed.len()
 }
 
 fn to_pipe(c: char) -> Pipe {
@@ -167,21 +327,18 @@ fn walk(
     y: isize,
     grid: &Vec<Vec<Pipe>>,
     visited: &mut HashSet<(isize, isize)>,
-) -> Option<u64> {
+) -> Option<(Vec<(isize, isize)>, u64)> {
     if visited.contains(&(x, y)) {
-      println!("{x}, {y} visited");
         return None;
     }
     visited.insert((x, y));
     if x < 0 || x >= grid[0].len() as isize || y < 0 || y >= grid.len() as isize {
         visited.remove(&(x, y));
-      println!("{x}, {y} oob");
         return None;
     }
-    println!("{x}, {y}, {:?}", grid[y as usize][x as usize]);
     use Pipe::*;
     let ret = match grid[y as usize][x as usize] {
-        Start => Some(1),
+        Start => Some((Vec::from_iter(visited.iter().cloned()), 1)),
         Vertical => choose(walk(x, y + 1, grid, visited), walk(x, y - 1, grid, visited)),
         Horizontal => choose(walk(x + 1, y, grid, visited), walk(x - 1, y, grid, visited)),
         NorthEast => choose(walk(x, y - 1, grid, visited), walk(x + 1, y, grid, visited)),
@@ -190,10 +347,7 @@ fn walk(
         SouthEast => choose(walk(x, y + 1, grid, visited), walk(x + 1, y, grid, visited)),
         NoPipe => None,
     }
-    .map(|e| {
-        println!("{x}, {y}, e: {e}");
-        e + 1
-    });
+    .map(|(v, e)| (v, e + 1));
     visited.remove(&(x, y));
     ret
 }
@@ -212,9 +366,15 @@ fn connect(&Cell { x, y, pipe }: &Cell, sx: isize, sy: isize) -> bool {
     }
 }
 
-fn choose(a: Option<u64>, b: Option<u64>) -> Option<u64> {
+fn choose<A>(a: Option<(A, u64)>, b: Option<(A, u64)>) -> Option<(A, u64)> {
     match (a, b) {
-        (Some(a), Some(b)) => Some(a.max(b)),
+        (Some((v, a)), Some((v2, b))) => {
+            if a > b {
+                Some((v, a))
+            } else {
+                Some((v2, b))
+            }
+        }
         (Some(a), None) => Some(a),
         (None, Some(b)) => Some(b),
         (None, None) => None,
@@ -258,8 +418,36 @@ mod test {
     fn part1_example4() {
         assert_eq!(super::part1("src/day10_test_input4.txt"), 8)
     }
-    #[test] // run with RUST_MIN_STACK=40000000 
+    #[test] // run with RUST_MIN_STACK=40000000
     fn part1_actual() {
         assert_eq!(super::part1("src/day10_input.txt"), 6754)
+    }
+    #[test]
+    fn part2_example1() {
+        assert_eq!(super::part2("src/day10_test_input5.txt"), 4)
+    }
+    #[test]
+    fn part2_example2() {
+        assert_eq!(super::part2("src/day10_test_input6.txt"), 4)
+    }
+    #[test]
+    fn part2_example3() {
+        assert_eq!(super::part2("src/day10_test_input7.txt"), 8)
+    }
+    #[test]
+    fn part2_example4() {
+        assert_eq!(super::part2("src/day10_test_input8.txt"), 8)
+    }
+    #[test]
+    fn part2_example5() {
+        assert_eq!(super::part2("src/day10_test_input9.txt"), 10)
+    }
+    #[test]
+    fn part2_example6() {
+        assert_eq!(super::part2("src/day10_test_input10.txt"), 10)
+    }
+    #[test] // run with RUST_MIN_STACK=40000000
+    fn part2_actual() {
+        assert_eq!(super::part2("src/day10_input.txt"), 6754)
     }
 }
