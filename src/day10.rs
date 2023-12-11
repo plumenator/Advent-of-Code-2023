@@ -258,8 +258,8 @@ mod test {
     fn part1_example4() {
         assert_eq!(super::part1("src/day10_test_input4.txt"), 8)
     }
-    #[test]
+    #[test] // run with RUST_MIN_STACK=40000000 
     fn part1_actual() {
-        assert_eq!(super::part1("src/day10_input.txt"), 1861775706)
+        assert_eq!(super::part1("src/day10_input.txt"), 6754)
     }
 }
