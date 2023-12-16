@@ -88,8 +88,22 @@ Between galaxy 8 and galaxy 9: 5
 In this example, after expanding the universe, the sum of the shortest path between all 36 pairs of galaxies is 374.
 
 Expand the universe, then find the length of the shortest path between every pair of galaxies. What is the sum of these lengths?
+
+Your puzzle answer was 9545480.
+
+--- Part Two ---
+The galaxies are much older (and thus much farther apart) than the researcher initially estimated.
+
+Now, instead of the expansion you did before, make each empty row or column one million times larger. That is, each empty row should be replaced with 1000000 empty rows, and each empty column should be replaced with 1000000 empty columns.
+
+(In the example above, if each empty row or column were merely 10 times larger, the sum of the shortest paths between every pair of galaxies would be 1030. If each empty row or column were merely 100 times larger, the sum of the shortest paths between every pair of galaxies would be 8410. However, your universe will need to expand far beyond these values.)
+
+Starting with the same initial image, expand the universe according to these new rules, then find the length of the shortest path between every pair of galaxies. What is the sum of these lengths?
+
+Your puzzle answer was 406725732046.
 */
 
+use std::collections::HashMap;
 use std::fs::read_to_string;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -100,7 +114,9 @@ enum Has {
 
 pub fn part1(file_name: &str, multiplicator: isize) -> isize {
     let grid = parse_grid(file_name);
+    let er = count_expandable(&grid);
     let transposed = transpose(&grid);
+    let ec = count_expandable(&transposed);
     let galaxies = find_galaxies(&grid);
     let mut lengths = Vec::new();
     for (srow, scol) in &galaxies {
@@ -119,8 +135,8 @@ pub fn part1(file_name: &str, multiplicator: isize) -> isize {
             } else {
                 (dcol, scol)
             };
-            let er = expand(&grid, lrow as usize, grow as usize);
-            let ec = expand(&transposed, lcol as usize, gcol as usize);
+            let er = er[&grow] - er[&lrow];
+            let ec = ec[&gcol] - ec[&lcol];
 
             lengths.push(
                 (grow - lrow - er) + (gcol - lcol - ec) + multiplicator * er + multiplicator * ec,
@@ -131,14 +147,17 @@ pub fn part1(file_name: &str, multiplicator: isize) -> isize {
     s / 2isize
 }
 
-fn expand(grid: &Vec<Vec<Has>>, begin: usize, end: usize) -> isize {
-    let mut count = 0;
-    for row in (begin + 1)..end {
-        if !grid[row].contains(&Has::Galaxy) {
-            count += 1
+fn count_expandable(grid: &Vec<Vec<Has>>) -> HashMap<isize, isize> {
+    let mut curr_count = 0;
+    let mut counts = HashMap::new();
+    for row in 0..grid.len() {
+        if grid[row].contains(&Has::Galaxy) {
+            counts.insert(row as isize, curr_count);
+        } else {
+            curr_count += 1;
         }
     }
-    count
+    counts
 }
 
 fn transpose(grid: &Vec<Vec<Has>>) -> Vec<Vec<Has>> {
@@ -201,6 +220,6 @@ mod test {
     }
     #[test]
     fn part2_actual() {
-        assert_eq!(super::part1("src/day11_input.txt", 1000000), 9545480)
+        assert_eq!(super::part1("src/day11_input.txt", 1000000), 406725732046)
     }
 }
